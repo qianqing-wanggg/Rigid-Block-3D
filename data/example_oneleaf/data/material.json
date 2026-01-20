@@ -1,0 +1,48 @@
+{
+  "nb_points_per_interface": 6,
+  "Sample_points_radius_to_D": 0.01,
+  "Force_ground_beam_by_x": true,
+  "fc_stone": 65.6,
+  "Emodulus_stone": 50700.0,
+  "lambda_stone": 0.15,
+  "Density_stone": 0.0,
+  "G_f1_stone": 0.012,
+  "G_f2_stone": 0.12,
+  "G_c_stone": 27.77,
+  "beta": 0.33333,
+  "mu_interface_stone": 0.5,
+  "fc_from_test": 4.08,
+  "Emodulus_mortar": 969.0,
+  "lambda_mortar": 0.15,
+  "Density_mortar": 0.0,
+  "m_m_tensile": 0.57,
+  "m_m_cohesion": 0.29,
+  "mu_interface_mortar": 0.5,
+  "G_f1_mortar": 0.04,
+  "G_f2_mortar": 0.37,
+  "G_c_mortar": 9.27,
+  "fc_beam": 57.0,
+  "Emodulus_beam": 5070000.0,
+  "lambda_beam": 0.15,
+  "m_b_tensile": 57.0,
+  "m_b_cohesion": 57.0,
+  "mu_interface_beam": 1.0,
+  "G_f1_beam": 17.0,
+  "G_f2_beam": 175.0,
+  "G_c_beam": 2777.0,
+  "beam_ground_element_center_to_interface": 0.01,
+  "Wall_height": 0.9,
+  "Wall_diagonal": 1.2884098726725126,
+  "wall_plane_xs": [
+    0.0,
+    0.9
+  ],
+  "wall_plane_ys": [
+    0.0,
+    0.9
+  ],
+  "wall_plane_zs": [
+    0.0,
+    0.2
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "control_dof": 1,
+  "step_size": 1.0,
+  "max_disp": 3.0,
+  "unit_comment": "mm",
+  "dead_load_dim": 0,
+  "dead_load_value": -139.0,
+  "dead_load_value_comment": "0 kN",
+  "write_freq": 1,
+  "beamID": 0
+}
