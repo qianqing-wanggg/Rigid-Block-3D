@@ -23,13 +23,85 @@ def render(refresh_token: int = 0):
         
         # Stone mesh files upload
         stone_files = st.file_uploader(
-            "Stone Geometry Files (OBJ/PLY)", 
+            "Stone Geometry Files (OBJ/PLY)",
             type=['obj', 'ply'],
             accept_multiple_files=True,
             key='stone_files',
             help="Upload stone_*.ply or similar files"
         )
-        
+
+        # Stone transformation controls
+        stone_transforms = {}
+
+        if stone_files:
+            with st.expander("Stone Transformations", expanded=False):
+                st.caption("Transforms applied in order: Rotation -> Auto-translate to origin -> Custom translation")
+
+                # Batch controls
+                apply_to_all = st.checkbox("Apply same transform to all stones", value=True, key="batch_transform")
+
+                if apply_to_all:
+                    # Single set of controls for all stones
+                    st.write("**All Stones**")
+
+                    st.write("Rotation (degrees)")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        rx_all = st.number_input("Rx", value=0.0, step=1.0, key="rx_all")
+                    with col2:
+                        ry_all = st.number_input("Ry", value=0.0, step=1.0, key="ry_all")
+                    with col3:
+                        rz_all = st.number_input("Rz", value=0.0, step=1.0, key="rz_all")
+
+                    auto_origin_all = st.checkbox("Auto-translate to origin (min=0,0,0)", value=True, key="auto_origin_all")
+
+                    st.write("Custom Translation (m)")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        tx_all = st.number_input("X", value=0.0, step=0.001, format="%.3f", key="tx_all")
+                    with col2:
+                        ty_all = st.number_input("Y", value=0.0, step=0.001, format="%.3f", key="ty_all")
+                    with col3:
+                        tz_all = st.number_input("Z", value=0.0, step=0.001, format="%.3f", key="tz_all")
+
+                    # Apply to all stones
+                    for stone_file in stone_files:
+                        stone_transforms[stone_file.name] = {
+                            'rotation': (rx_all, ry_all, rz_all),
+                            'auto_origin': auto_origin_all,
+                            'translation': (tx_all, ty_all, tz_all)
+                        }
+                else:
+                    # Individual controls per stone
+                    for i, stone_file in enumerate(stone_files):
+                        with st.container():
+                            st.write(f"**{stone_file.name}**")
+
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                rx = st.number_input("Rx (deg)", value=0.0, step=1.0, key=f"rx_{i}")
+                            with col2:
+                                ry = st.number_input("Ry (deg)", value=0.0, step=1.0, key=f"ry_{i}")
+                            with col3:
+                                rz = st.number_input("Rz (deg)", value=0.0, step=1.0, key=f"rz_{i}")
+
+                            auto_origin = st.checkbox("Auto-translate to origin", value=True, key=f"auto_{i}")
+
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                tx = st.number_input("Tx (m)", value=0.0, step=0.001, format="%.3f", key=f"tx_{i}")
+                            with col2:
+                                ty = st.number_input("Ty (m)", value=0.0, step=0.001, format="%.3f", key=f"ty_{i}")
+                            with col3:
+                                tz = st.number_input("Tz (m)", value=0.0, step=0.001, format="%.3f", key=f"tz_{i}")
+
+                            stone_transforms[stone_file.name] = {
+                                'rotation': (rx, ry, rz),
+                                'auto_origin': auto_origin,
+                                'translation': (tx, ty, tz)
+                            }
+                            st.divider()
+
         #st.divider()
         
         # === LOAD/SAVE CONFIG SECTION ===
@@ -333,7 +405,8 @@ def render(refresh_token: int = 0):
                     temp_dir=temp_dir,
                     process_stone_normals=process_stone_normals,
                     simplify_stones=simplify_stones,
-                    simplification_ratio=simplification_ratio
+                    simplification_ratio=simplification_ratio,
+                    stone_transforms=stone_transforms
                 )
                 
                 st.session_state.model_generated = True

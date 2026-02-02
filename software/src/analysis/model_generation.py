@@ -133,8 +133,131 @@ def generate_cubes_from_json(
 import numpy as np
 import pymeshlab
 import glob
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict
 import os
+
+
+def apply_rotation_to_mesh(
+    ms: pymeshlab.MeshSet,
+    rotation_deg: Tuple[float, float, float]
+) -> None:
+    """Apply rotation (Rx, Ry, Rz) to a MeshSet in place."""
+    if rotation_deg[0] != 0:
+        ms.compute_matrix_from_rotation(
+            rotaxis='X axis', rotcenter='origin', angle=rotation_deg[0]
+        )
+        #ms.apply_matrix_freeze()
+
+    if rotation_deg[1] != 0:
+        ms.compute_matrix_from_rotation(
+            rotaxis='Y axis', rotcenter='origin', angle=rotation_deg[1]
+        )
+        #ms.apply_matrix_freeze()
+
+    if rotation_deg[2] != 0:
+        ms.compute_matrix_from_rotation(
+            rotaxis='Z axis', rotcenter='origin', angle=rotation_deg[2]
+        )
+        #ms.apply_matrix_freeze()
+
+
+def apply_translation_to_mesh(
+    ms: pymeshlab.MeshSet,
+    translation: Tuple[float, float, float]
+) -> None:
+    """Apply translation (tx, ty, tz) to a MeshSet in place."""
+    if any(t != 0 for t in translation):
+        ms.compute_matrix_from_translation_rotation_scale(
+            translationx =translation[0],
+            translationy=translation[1],
+            translationz=translation[2]
+        )
+        #ms.apply_matrix_freeze()
+
+
+def compute_global_min_after_rotation(
+    stone_mesh_paths: List[str],
+    stone_transforms: Optional[Dict[str, dict]] = None
+) -> Tuple[float, float, float]:
+    """
+    Compute the global minimum coordinates across all stones after applying rotation.
+
+    Args:
+        stone_mesh_paths: List of paths to stone mesh files
+        stone_transforms: Optional dict mapping stone filename to transform settings
+
+    Returns:
+        Tuple of (min_x, min_y, min_z) across all stones after rotation
+    """
+    global_min = [float('inf'), float('inf'), float('inf')]
+
+    for stone_path in stone_mesh_paths:
+        if not os.path.exists(stone_path):
+            continue
+
+        ms = pymeshlab.MeshSet()
+        ms.load_new_mesh(stone_path)
+
+        # Apply rotation if specified
+        stone_filename = os.path.basename(stone_path)
+        if stone_transforms and stone_filename in stone_transforms:
+            transform = stone_transforms[stone_filename]
+            rotation_deg = transform.get('rotation', (0, 0, 0))
+            apply_rotation_to_mesh(ms, rotation_deg)
+
+        # Update global min
+        bb = ms.current_mesh().bounding_box()
+        min_coords = bb.min()
+        global_min[0] = min(global_min[0], min_coords[0])
+        global_min[1] = min(global_min[1], min_coords[1])
+        global_min[2] = min(global_min[2], min_coords[2])
+
+    return tuple(global_min)
+
+
+def preprocess_stone_mesh(
+    mesh_path: str,
+    rotation_deg: Tuple[float, float, float] = (0, 0, 0),
+    auto_translate_offset: Optional[Tuple[float, float, float]] = None,
+    translation: Tuple[float, float, float] = (0, 0, 0),
+    output_path: Optional[str] = None
+) -> pymeshlab.MeshSet:
+    """
+    Preprocess a stone mesh with sequential transformations.
+
+    Order of operations:
+    1. Rotation (Rx, Ry, Rz) around origin
+    2. Auto-translate using pre-computed global offset (same for all stones)
+    3. Custom translation (tx, ty, tz)
+
+    Args:
+        mesh_path: Input mesh file path
+        rotation_deg: (Rx, Ry, Rz) rotation in degrees
+        auto_translate_offset: Pre-computed offset to translate all stones by the same amount
+            (typically negative of global min coords so wall min is at origin)
+        translation: (tx, ty, tz) custom translation after auto-translate
+        output_path: Optional path to save result
+
+    Returns:
+        pymeshlab.MeshSet with transformed mesh
+    """
+    ms = pymeshlab.MeshSet()
+    ms.load_new_mesh(mesh_path)
+
+    # Step 1: Rotation (Rx, Ry, Rz)
+    apply_rotation_to_mesh(ms, rotation_deg)
+
+    # Step 2: Auto-translate using global offset (same for all stones)
+    if auto_translate_offset is not None:
+        apply_translation_to_mesh(ms, auto_translate_offset)
+
+    # Step 3: Custom translation
+    apply_translation_to_mesh(ms, translation)
+
+    if output_path:
+        ms.save_current_mesh(output_path)
+
+    return ms
 
 
 def merge_wall_components(
@@ -145,7 +268,9 @@ def merge_wall_components(
     output_path: Optional[str] = None,
     process_stone_normals: bool = True,
     simplify_stones: bool = False,
-    simplification_ratio: float = 0.2
+    simplification_ratio: float = 0.2,
+    stone_transforms: Optional[Dict[str, dict]] = None,
+    temp_dir: str = "temp"
 ) -> pymeshlab.MeshSet:
     """
     Merge beam, ground, wall, and multiple stone meshes into a single combined mesh.
@@ -159,11 +284,13 @@ def merge_wall_components(
         process_stone_normals: Whether to reorient and invert stone face normals
         simplify_stones: Whether to simplify stone meshes
         simplification_ratio: Target percentage for mesh simplification (0.0 to 1.0)
-    
+        stone_transforms: Optional dict mapping stone filename to transform settings
+            Each entry: {'rotation': (rx, ry, rz), 'auto_origin': bool, 'translation': (tx, ty, tz)}
+
     Returns:
         pymeshlab.MeshSet: MeshSet containing the final merged mesh
     """
-    
+
     # Initialize final MeshSet
     final_ms = pymeshlab.MeshSet()
     
@@ -183,18 +310,46 @@ def merge_wall_components(
     
     # Process and add stones
     print(f"\nProcessing {len(stone_mesh_paths)} stones...")
-    
+
+    # Check if auto_origin is enabled for any stone and compute global min
+    auto_translate_offset = None
+    if stone_transforms:
+        # Check if any stone has auto_origin enabled
+        any_auto_origin = any(
+            t.get('auto_origin', False)
+            for t in stone_transforms.values()
+        )
+        if any_auto_origin:
+            print("  Computing global bounding box after rotation...")
+            global_min = compute_global_min_after_rotation(stone_mesh_paths, stone_transforms)
+            auto_translate_offset = (-global_min[0], -global_min[1], -global_min[2])
+            print(f"  Global min: {global_min}, auto-translate offset: {auto_translate_offset}")
+
     for i, stone_path in enumerate(stone_mesh_paths):
         if not os.path.exists(stone_path):
             print(f"  Warning: Stone file not found: {stone_path}")
             continue
-            
+
         print(f"  Processing stone {i+1}/{len(stone_mesh_paths)}: {os.path.basename(stone_path)}")
-        
-        # Load stone in a temporary MeshSet for processing
-        temp_ms = pymeshlab.MeshSet()
-        temp_ms.load_new_mesh(stone_path)
-        
+
+        # Apply preprocessing transforms if specified
+        stone_filename = os.path.basename(stone_path)
+        if stone_transforms and stone_filename in stone_transforms:
+            transform = stone_transforms[stone_filename]
+            # Only apply auto_translate_offset if this stone has auto_origin enabled
+            stone_auto_offset = auto_translate_offset if transform.get('auto_origin', False) else None
+            temp_ms = preprocess_stone_mesh(
+                mesh_path=stone_path,
+                rotation_deg=transform.get('rotation', (0, 0, 0)),
+                auto_translate_offset=stone_auto_offset,
+                translation=transform.get('translation', (0, 0, 0))
+            )
+            print(f"    - Applied transforms: rot={transform.get('rotation')}, auto_offset={stone_auto_offset}, trans={transform.get('translation')}")
+        else:
+            # Load stone in a temporary MeshSet for processing
+            temp_ms = pymeshlab.MeshSet()
+            temp_ms.load_new_mesh(stone_path)
+
         # Optional: Simplify mesh
         if simplify_stones:
             temp_ms.apply_filter(
@@ -221,7 +376,7 @@ def merge_wall_components(
         
         # Get the current mesh and add it to final MeshSet
         # Save to temporary file and load into final_ms
-        temp_file = f"_temp_stone_{i}.ply"
+        temp_file = temp_dir+f"/_temp_stone_{i}.ply"
         temp_ms.save_current_mesh(temp_file, save_vertex_normal=True)
         final_ms.load_new_mesh(temp_file)
         
@@ -257,7 +412,8 @@ def process_wall_assembly(
     temp_dir: str = "temp",
     process_stone_normals: bool = True,
     simplify_stones: bool = False,
-    simplification_ratio: float = 0.2
+    simplification_ratio: float = 0.2,
+    stone_transforms: Optional[Dict[str, dict]] = None
 ) -> pymeshlab.MeshSet:
     """
     Complete pipeline: Generate beam/ground/wall cubes from JSON and merge with stones.
@@ -271,15 +427,17 @@ def process_wall_assembly(
         process_stone_normals: Whether to reorient and invert stone face normals
         simplify_stones: Whether to simplify stone meshes
         simplification_ratio: Target percentage for mesh simplification (0.0 to 1.0)
-    
+        stone_transforms: Optional dict mapping stone filename to transform settings
+            Each entry: {'rotation': (rx, ry, rz), 'auto_origin': bool, 'translation': (tx, ty, tz)}
+
     Returns:
         pymeshlab.MeshSet: MeshSet containing the final merged mesh
-        
+
     Note:
-        Temporary cube files (beam_origin.stl, ground_origin.stl, wall_origin.stl) 
+        Temporary cube files (beam_origin.stl, ground_origin.stl, wall_origin.stl)
         are saved in temp_dir and are NOT automatically deleted.
     """
-    
+
     print("="*60)
     print("WALL ASSEMBLY PIPELINE")
     print("="*60)
@@ -327,7 +485,8 @@ def process_wall_assembly(
         output_path=output_path,
         process_stone_normals=process_stone_normals,
         simplify_stones=simplify_stones,
-        simplification_ratio=simplification_ratio
+        simplification_ratio=simplification_ratio,
+        stone_transforms=stone_transforms,temp_dir=temp_dir
     )
     
     print("\n" + "="*60)
