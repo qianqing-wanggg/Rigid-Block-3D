@@ -23,7 +23,7 @@ def generate_rigid_block_model(material_json_path, mortar_ply_path, stones_dir, 
     Args:
         material_json_path: Path to material.json file
         mortar_ply_path: Path to mortar.ply file
-        stones_dir: Directory containing stone mesh files (*iteration*.ply)
+        stones_dir: Directory containing stone mesh files (*stone_*.ply)
         mortar_msh_path: Path to mortar .msh file
         output_dir: Output directory for CSV files
         boundary_string: Boundary condition type (default: "double_bending")
@@ -135,7 +135,7 @@ def generate_rigid_block_model(material_json_path, mortar_ply_path, stones_dir, 
     Force_ground_beam_by_x = bool(material_json['Force_ground_beam_by_x'])
     
     # Load stone files
-    stone_files = glob.glob(os.path.join(stones_dir, "stone_*.ply"))
+    stone_files = glob.glob(os.path.join(stones_dir, "*stone_*.ply"))
     
     wall_mesh = trimesh.load(mortar_ply_path)
     wall_center = wall_mesh.centroid
@@ -183,7 +183,7 @@ def generate_rigid_block_model(material_json_path, mortar_ply_path, stones_dir, 
     elems = dict()
     sample_points = []
     sample_point_to_element_id_map = dict()
-    iteration_id_to_element_id_map = dict()
+    #iteration_id_to_element_id_map = dict()
     element_id = 0
     pc_element_centers = []
     
@@ -191,13 +191,13 @@ def generate_rigid_block_model(material_json_path, mortar_ply_path, stones_dir, 
         print("!!!!!!!!!!!!no stone files found!!!!!!!!!!!!!!!!!!!!!")
     else:
         for stone_file in stone_files:
-            iteration = int(stone_file.split("stone_")[1].split(".ply")[0])
+            stone_id = int(stone_file.split("stone_")[1].split(".ply")[0])
             stone_mesh = trimesh.load(stone_file)
             stone_center = stone_mesh.centroid
             stone_volume = abs(stone_mesh.volume)
             surface_area = stone_mesh.area
-            elems[element_id] = {"id":iteration, "mesh":stone_mesh, "center":stone_center, "volume":stone_volume,"element_id":element_id,"type":f"stone_{iteration}"}
-            iteration_id_to_element_id_map[iteration] = element_id
+            elems[element_id] = {"id":stone_id, "mesh":stone_mesh, "center":stone_center, "volume":stone_volume,"element_id":element_id,"type":f"stone_{stone_id}"}
+            #iteration_id_to_element_id_map[iteration] = element_id
             if len(sample_points) == 0:
                 sample_points = get_sample_points_from_surface(stone_mesh, int(surface_area/(Sample_points_radius**2)),unique_point_radius = Sample_points_radius)
                 sample_point_to_element_id_map = dict.fromkeys(list(range(len(sample_points))),element_id)
@@ -207,9 +207,9 @@ def generate_rigid_block_model(material_json_path, mortar_ply_path, stones_dir, 
                 sample_point_to_element_id_map.update(dict.fromkeys(list(range(prev_sample_points_length,len(sample_points))),element_id))
             element_id += 1
     
-    #write iteration_id_to_element_id_map to json
-    with open(os.path.join(output_dir, "iteration_id_to_element_id_map.json"), "w+") as f:
-        json.dump(iteration_id_to_element_id_map,f,indent=4)
+    # #write iteration_id_to_element_id_map to json
+    # with open(os.path.join(output_dir, "iteration_id_to_element_id_map.json"), "w+") as f:
+    #     json.dump(iteration_id_to_element_id_map,f,indent=4)
     
     # read wall mesh
     wall_mesh = trimesh.load(mortar_ply_path)

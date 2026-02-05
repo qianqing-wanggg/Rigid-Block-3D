@@ -114,9 +114,9 @@ def render(refresh_token: int = 0):
             edge_length = st.number_input(
                 "Relative Edge Length",
                 value=0.02,
-                min_value=0.001,
-                max_value=0.1,
-                step=0.001,
+                min_value=0.01,
+                max_value=0.5,
+                step=0.01,
                 format="%.4f",
                 help="Target relative edge length for mesh elements. Smaller values create finer meshes."
             )

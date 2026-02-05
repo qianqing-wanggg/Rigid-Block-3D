@@ -276,9 +276,9 @@ def render(refresh_token: int = 0):
         ground_center_z = wall_center_z
 
         # Planes/bounds used by util_meshing.py (it uses wall_plane_xs/ys/zs as bounds)
-        wall_plane_xs = [0.0, wall_dim_x]
-        wall_plane_ys = [0.0, wall_dim_y]
-        wall_plane_zs = [0.0, wall_dim_z]
+        wall_plane_xs = [wall_center_x-wall_dim_x*0.5, wall_center_x+wall_dim_x*0.5]
+        wall_plane_ys = [wall_center_y-wall_dim_y*0.5, wall_center_y+wall_dim_y*0.5]
+        wall_plane_zs = [wall_center_z-wall_dim_z*0.5, wall_center_z+wall_dim_z*0.5]
 
         # Also needed by util_meshing.py:
         Wall_height = wall_dim_x       # util_meshing treats "height" along X
@@ -306,10 +306,10 @@ def render(refresh_token: int = 0):
             if simplify_stones:
                 simplification_ratio = st.slider(
                     "Simplification Ratio",
-                    min_value=0.1,
+                    min_value=0.0,
                     max_value=1.0,
-                    value=0.2,
-                    step=0.05,
+                    value=0.1,
+                    step=0.01,
                     help="Target percentage of original mesh complexity"
                 )
             else:
@@ -452,6 +452,7 @@ def render(refresh_token: int = 0):
                 os.makedirs(temp_dir, exist_ok=True)
                 os.makedirs(stones_dir, exist_ok=True)
                 st.session_state.stones_dir = stones_dir
+                st.session_state.temp_dir = temp_dir
                 
                 # Save geometry JSON
                 geometry_config = create_geometry_json(

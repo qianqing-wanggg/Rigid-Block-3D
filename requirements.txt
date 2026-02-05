@@ -8,7 +8,6 @@ pyevtk
 mosek
 numba
 trimesh
-pyvoro
 scikit-image
 rtree
 pymeshlab
@@ -19,3 +18,4 @@ meshio
 pyvista
 vtk
 stpyvista
+numpy

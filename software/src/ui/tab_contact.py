@@ -401,7 +401,7 @@ def render(refresh_token: int = 0):
     st.write("**Checking required files...**")
     
     mortar_ply_path = st.session_state.get("output_mesh_path")
-    stones_dir = st.session_state.get("stones_dir") or os.path.join(st.session_state.work_dir, "stones")
+    stones_dir = st.session_state.get("temp_dir")# use processed stones stored in temp
     mesh_path = st.session_state.mesh_output_path
     
     missing_files = []

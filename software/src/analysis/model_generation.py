@@ -552,13 +552,15 @@ def merge_wall_components(
         
         # Get the current mesh and add it to final MeshSet
         # Save to temporary file and load into final_ms
-        temp_file = temp_dir+f"/_temp_stone_{i}.ply"
+        stone_id = stone_filename.split("stone_")[1].split(".")[0]
+        stone_id = int(stone_id)
+        temp_file = temp_dir+f"/_temp_stone_{stone_id}.ply"
         temp_ms.save_current_mesh(temp_file, save_vertex_normal=True)
         final_ms.load_new_mesh(temp_file)
         
-        # Clean up temporary file
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
+        # # Clean up temporary file
+        # if os.path.exists(temp_file):
+        #     os.remove(temp_file)
     
     # Merge all meshes into a single mesh
     print("\nMerging all meshes into one...")
