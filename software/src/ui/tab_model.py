@@ -170,7 +170,33 @@ def render(refresh_token: int = 0):
                 wall_dim_y = st.number_input("Wall size Y (m)", value=get_value('wall_dim_y', 0.05), step=0.001, format="%.3f", key="wall_y")
             with col3:
                 wall_dim_z = st.number_input("Wall size Z (m)", value=get_value('wall_dim_z', 0.1), step=0.001, format="%.3f", key="wall_z")
-
+            # --- Wall center position ---
+            col4, col5, col6 = st.columns(3)
+            with col4:
+                wall_center_x = st.number_input(
+                    "Wall center X (m)",
+                    value=get_value('wall_center_x', 0.0),
+                    step=0.001,
+                    format="%.3f",
+                    key="wall_center_x"
+                )
+            with col5:
+                wall_center_y = st.number_input(
+                    "Wall center Y (m)",
+                    value=get_value('wall_center_y', 0.0),
+                    step=0.001,
+                    format="%.3f",
+                    key="wall_center_y"
+                )
+            with col6:
+                wall_center_z = st.number_input(
+                    "Wall center Z (m)",
+                    value=get_value('wall_center_z', 0.0),
+                    step=0.001,
+                    format="%.3f",
+                    key="wall_center_z"
+                )
+            derived_wall_center = (wall_center_x, wall_center_y, wall_center_z)
         else:
             # Auto-derive from stones
             if not stone_files:

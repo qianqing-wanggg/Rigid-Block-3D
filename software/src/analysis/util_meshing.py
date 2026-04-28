@@ -104,13 +104,13 @@ def generate_rigid_block_model(material_json_path, mortar_ply_path, stones_dir, 
                                 "E":E_mortar*1e6,"Gf1":G_f1_mortar*1e3,"Gf2":G_f2_mortar*1e3,\
                                 "Gc":G_c_mortar*1e3,"lambda":lambda_mortar}
     interface_stone_property = {"contact_type":"friction_fc_cohesion","cohesion":ratio_strength_interface*cohesion_m_m_interface*1e6,\
-                                "mu":mu_interface_stone,"fc":fc_stone*1e6,"ft":ratio_strength_interface*tensile_m_m_interface*1e6/1,\
+                                "mu":mu_interface_stone,"fc":fc_from_test*1e6,"ft":ratio_strength_interface*tensile_m_m_interface*1e6/1,\
                                 "E":E_stone*1e6,"Gf1":G_f1_stone*1e3,"Gf2":G_f2_stone*1e3,\
-                                "Gc":G_c_stone*1e3,"lambda":lambda_stone}
+                                "Gc":G_c_mortar*1e3,"lambda":lambda_stone}
     interface_mortar_property = {"contact_type":"friction_fc_cohesion","cohesion":ratio_strength_interface*cohesion_m_m_interface*1e6,\
                                 "mu":mu_interface_stone,"fc":fc_from_test*1e6,"ft":ratio_strength_interface*tensile_m_m_interface*1e6/1,\
                                 "E":E_mortar*1e6,"Gf1":G_f1_stone*1e3,"Gf2":G_f2_stone*1e3,\
-                                "Gc":G_c_stone*1e3,"lambda":lambda_stone}
+                                "Gc":G_c_mortar*1e3,"lambda":lambda_stone}
     contact_to_beam_property = {"contact_type":"friction_fc_cohesion","cohesion":m_b_cohesion*1e6,\
                                 "mu":mu_interface_beam,"fc":fc_beam*1e6,"ft":m_b_tensile*1e6,"E":E_beam*1e6,\
                                 "Gf1":G_f1_beam*1e3,"Gf2":G_f2_beam*1e3,\
@@ -727,10 +727,16 @@ def generate_ss_contact(material_json_path, stones_dir, output_dir, voxelize_pit
         print("origional points:", points)
         print("projected points:",projected_points)
         #check if projected_points are colinear
+        projected_points = np.unique(projected_points, axis=0)
         if are_collinear(projected_points):
             return 0,0
+        if len(projected_points) < 3:
+            return 0, 0
         #get the envelop area
-        envelop_ch = scipy.spatial.ConvexHull(projected_points)
+        try:
+            envelop_ch = scipy.spatial.ConvexHull(projected_points)
+        except scipy.spatial.qhull.QhullError:
+            return 0, 0
         envelop_area = envelop_ch.volume
         return envelop_area, envelop_ch
 
